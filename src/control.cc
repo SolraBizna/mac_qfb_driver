@@ -23,7 +23,7 @@ void qfb_gray_pixels(HLocker<Locals>& locals, uint32_t page) {
   case 32: a = 0xFFFFFFFF; b = 0x00000000; break;
   }
   uint32_t* row_pointer = reinterpret_cast<uint32_t*>(locals->vram);
-  row_pointer += page * qfb->height * qfb->rowbytes;
+  row_pointer += page * qfb->height * (qfb->rowbytes / 4);
   for(uint32_t y = 0; y < qfb->height; ++y) {
     uint32_t rowbytes_left = qfb->rowbytes;
     uint32_t* p = row_pointer;
@@ -35,6 +35,7 @@ void qfb_gray_pixels(HLocker<Locals>& locals, uint32_t page) {
     }
     uint32_t new_a = ~b, new_b = ~a;
     a = new_a; b = new_b;
+    row_pointer += (qfb->rowbytes / 4);
   }
   if(qfb->depth <= 8) {
     qfb->pal_index = 0;
