@@ -2,13 +2,17 @@
 
 int qfb_drvr_open(ParmBlkPtr params, DCtlPtr dce, uint32_t slot) {
   (void)params;
+  dprintf("--- mac_qfb_driver opened! ---\n");
+  dprintf("Allocating memory.\n");
   /* Allocate memory for our Locals */
   ReserveMemSys(sizeof(Locals)+sizeof(SlotIntQElement));
   Handle local_handle = NewHandleSysClear(sizeof(Locals));
   if(!local_handle) return MemError();
 #ifdef SUPPORT_AUX
+  dprintf("Locking handle.\n");
   HLock(local_handle);
 #else
+  dprintf("Moving handle high.\n");
   MoveHHi(local_handle);
 #endif
   dce->dCtlStorage = local_handle;
@@ -16,11 +20,14 @@ int qfb_drvr_open(ParmBlkPtr params, DCtlPtr dce, uint32_t slot) {
   locals->vram = reinterpret_cast<uint8_t*>(0xF0000000 | (slot<<24));
   locals->qfb = reinterpret_cast<volatile QFB*>(locals->vram + 0xC00000);
   locals->slot = slot;
+  dprintf("VRAM: %p\tRegs: %p\nSlot: %X\n", locals->vram,
+          locals->qfb, locals->slot);
   if(locals->qfb->version != 'qfb0') {
     DebugStr("\pWrong QFB version");
     DisposeHandle(local_handle);
     return openErr;
   }
+  dprintf("Allocating Slot Interrupt Queue element.\n");
   locals->slot_queue_element = reinterpret_cast<SlotIntQElement*>(NewPtrSysClear(sizeof(SlotIntQElement)));
   if(locals->slot_queue_element == nullptr) {
     int ret = MemError();
@@ -28,10 +35,14 @@ int qfb_drvr_open(ParmBlkPtr params, DCtlPtr dce, uint32_t slot) {
     DisposeHandle(local_handle);
     return ret;
   }
+  dprintf("Initializing Slot Interrupt Queue element.\n");
   locals->slot_queue_element->sqType = 6; // sIQType
   locals->slot_queue_element->sqAddr = qfb_interrupt_service_routine;
   locals->slot_queue_element->sqParm = reinterpret_cast<uint32_t>(locals->qfb);
+  dprintf("Installing gray palette.\n");
   qfb_gray_clut(locals);
+  dprintf("Setting mode: %u x %u x %u\n",
+          locals->qfb->user_width, locals->qfb->user_height, 1);
   /* set up user-specified width and height, but 1-bpp, because that's the mode
      A/UX and MacOS expect to be active on open */
   locals->qfb->width = locals->qfb->user_width;
@@ -39,14 +50,33 @@ int qfb_drvr_open(ParmBlkPtr params, DCtlPtr dce, uint32_t slot) {
   locals->cur_mode = ONE_BIT_MODE;
   locals->qfb->depth = 1;
   locals->qfb->page = 0;
+  dprintf("Splatting gray pattern.\n");
   qfb_gray_pixels(locals, 0);
   locals.unlock();
-  return qfb_enable_interrupts(dce);
+  auto ret = qfb_enable_interrupts(dce);
+  dprintf("Open complete!\n");
+  return ret;
 }
 
 int qfb_drvr_close(ParmBlkPtr params, DCtlPtr dce) {
   (void)params;
-  DisposeHandle(dce->dCtlStorage);
+  dprintf("Driver closing.\n");
+  if(dce->dCtlStorage) {
+    HLocker<Locals> locals(dce->dCtlStorage);
+    if(locals->slot_queue_element) {
+      if(locals->irq_enabled) {
+        dprintf("Driver closed while interrupts still enabled.\n");
+        locals->irq_enabled = false;
+        locals->qfb->irq_mask = 0;
+        SIntRemove(locals->slot_queue_element, locals->slot);
+      }
+      DisposePtr((Ptr)locals->slot_queue_element);
+      locals->slot_queue_element = nullptr;
+    }
+    locals.unlock();
+    DisposeHandle(dce->dCtlStorage);
+    dce->dCtlStorage = nullptr;
+  }
   return noErr;
 }
 
@@ -88,8 +118,12 @@ uint16_t qfb_calculate_num_pages(uint32_t width, uint32_t height, uint32_t depth
 }
 
 int qfb_enable_interrupts(DCtlPtr dce) {
+  dprintf("Enabling vertical blank interrupt.\n");
   HLocker<Locals> locals(dce->dCtlStorage);
-  if(locals->irq_enabled) return noErr; /* nothing to do */
+  if(locals->irq_enabled) {
+    dprintf("(but it was already enabled!)\n");
+    return noErr; /* nothing to do */
+  }
   SIntInstall(locals->slot_queue_element, locals->slot);
   locals->qfb->irq_mask = QFB_IRQ_VBL;
   locals->irq_enabled = true;
@@ -97,8 +131,12 @@ int qfb_enable_interrupts(DCtlPtr dce) {
 }
 
 int qfb_disable_interrupts(DCtlPtr dce) {
+  dprintf("Disabling vertical blank interrupt.\n");
   HLocker<Locals> locals(dce->dCtlStorage);
-  if(!locals->irq_enabled) return noErr; /* nothing to do */
+  if(!locals->irq_enabled) {
+    dprintf("(but it was already disabled!)\n");
+    return noErr; /* nothing to do */
+  }
   locals->irq_enabled = false;
   locals->qfb->irq_mask = 0;
   SIntRemove(locals->slot_queue_element, locals->slot);
