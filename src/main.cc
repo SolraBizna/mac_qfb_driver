@@ -70,7 +70,7 @@ int qfb_drvr_close(ParmBlkPtr params, DCtlPtr dce) {
         locals->qfb->irq_mask = 0;
         SIntRemove(locals->slot_queue_element, locals->slot);
       }
-      DisposePtr((Ptr)locals->slot_queue_element);
+      DisposePtr(reinterpret_cast<Ptr>(locals->slot_queue_element));
       locals->slot_queue_element = nullptr;
     }
     locals.unlock();
