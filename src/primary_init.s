@@ -70,8 +70,6 @@ _screenFillLoopInner:
         BGT _screenFillLoopOuter
         /* now it gets real... now it's time to patch our sResources */
         /* ...or it would be if QEMU hadn't done it for us. */
-        /* save our own parameter block in A2 */
-        MOVEA %A0, %A2
         /* make room on the stack for the spBlock */
         SUBA #spBlock.size, %SP
         /* put a pointer to our brand new Slot Manager parameter block in A0 */
