@@ -42,13 +42,38 @@ int qfb_drvr_open(ParmBlkPtr params, DCtlPtr dce, uint32_t slot) {
   dprintf("Installing gray palette.\n");
   qfb_gray_clut(locals);
   dprintf("Setting mode: %u x %u x %u\n",
-          locals->qfb->user_width, locals->qfb->user_height, 1);
+          locals->qfb->user_width, locals->qfb->user_height,
+          locals->qfb->user_depth);
   /* set up user-specified width and height, but 1-bpp, because that's the mode
      A/UX and MacOS expect to be active on open */
   locals->qfb->width = locals->qfb->user_width;
   locals->qfb->height = locals->qfb->user_height;
-  locals->cur_mode = ONE_BIT_MODE;
-  locals->qfb->depth = 1;
+  switch(locals->qfb->user_depth) {
+  case 1:
+    locals->cur_mode = ONE_BIT_MODE;
+    locals->qfb->depth = 1;
+    break;
+  case 2:
+    locals->cur_mode = TWO_BIT_MODE;
+    locals->qfb->depth = 2;
+    break;
+  case 4:
+    locals->cur_mode = FOUR_BIT_MODE;
+    locals->qfb->depth = 4;
+    break;
+  case 8:
+    locals->cur_mode = EIGHT_BIT_MODE;
+    locals->qfb->depth = 8;
+    break;
+  case 16:
+    locals->cur_mode = SIXTEEN_BIT_MODE;
+    locals->qfb->depth = 16;
+    break;
+  case 24: case 32:
+    locals->cur_mode = THIRTY_TWO_BIT_MODE;
+    locals->qfb->depth = 32;
+    break;
+  }
   locals->qfb->page = 0;
   dprintf("Splatting gray pattern.\n");
   qfb_gray_pixels(locals, 0);
