@@ -8,7 +8,7 @@ int qfb_get_mode(CntrlParam* params, DCtlPtr dce) {
   si->csMode = locals->cur_mode;
   si->csData = 0; /* current mode ID or unused */
   si->csPage = locals->qfb->page;
-  si->csBaseAddr = reinterpret_cast<Ptr>(locals->vram + locals->qfb->page * locals->qfb->rowbytes + locals->qfb->height);
+  si->csBaseAddr = reinterpret_cast<Ptr>(locals->vram + (locals->qfb->page * locals->qfb->rowbytes * locals->qfb->height));
   return noErr;
 }
 
