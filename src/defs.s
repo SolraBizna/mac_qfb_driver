@@ -22,7 +22,7 @@ _macsbugSymbol\@:
         .set sRsrcHWDevId, 8
         .set minorBase, 10
         .set minorLength, 11
-        .set sRsrcCicn, 12
+        .set sRsrcCicn, 15
         .set boardId, 32
         .set primaryInit, 34
         .set vendorInfo, 36

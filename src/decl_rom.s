@@ -26,8 +26,8 @@ _sRsrc_Board:
         OSLstEntry sRsrcType, _BoardTypeRec
         OSLstEntry sRsrcName, _BoardName
         OSLstEntry sRsrcIcon, _Icon
-        DatLstEntry boardId, ourBoardID
         OSLstEntry sRsrcCicn, _Cicn
+        DatLstEntry boardId, ourBoardID
         OSLstEntry primaryInit, _PrimaryInitRec
         OSLstEntry vendorInfo, _VendorInfoRec
         DatLstEntry endOfList, 0
@@ -41,7 +41,7 @@ _BoardName:
         .asciz "Qemu FrameBuffer video card"
 
 _PrimaryInitRec:
-        .long _PrimaryInitRecEnd
+        .long _PrimaryInitRecEnd-_PrimaryInitRec
         .byte 2 /* code revision? */
         .byte sCPU_68020 /* CPU type */
         .short 0 /* reserved */
@@ -201,6 +201,7 @@ _Cicn:  .long _CicnEnd-_Cicn
         .long 0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF
         .long 0xFFFFFFFF,0xFFFFFFFF
         .byte 0xFF
+        .align 2
 _CicnEnd:
 
         /* Now for the DRIVER! */
