@@ -50,9 +50,16 @@
         /* Let's fill the screen with gray! */
         MOVE.L #0xAAAAAAAA, %D2
         MOVE.L QFB_MODE_HEIGHT(%A3), %D1
+        CMP.L #1536, %D1
+        BLS 1f
+        MOVE.L #1536, %D1
+1:
 _screenFillLoopOuter:
         MOVE.L QFB_MODE_STRIDE(%A3), %D0
-        MOVE.L %A2, %A1
+        CMP.L #8192, %D0
+        BLS 1f
+        MOVE.L #8192, %D0
+1:      MOVE.L %A2, %A1
 _screenFillLoopInner:
         MOVE.L %D2, (%A1)+
         SUBQ.L #4, %D0
