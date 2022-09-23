@@ -17,12 +17,12 @@ int qfb_drvr_open(ParmBlkPtr params, DCtlPtr dce, uint32_t slot) {
 #endif
   dce->dCtlStorage = local_handle;
   HLocker<Locals> locals(local_handle);
-  locals->vram = reinterpret_cast<uint8_t*>(0xF0000000 | (slot<<24));
-  locals->qfb = reinterpret_cast<volatile QFB*>(locals->vram + 0xC00000);
+  locals->qfb = reinterpret_cast<volatile QFB*>(0xF0000000 | (slot<<24));
+  locals->vram = reinterpret_cast<uint8_t*>(slot << 28);
   locals->slot = slot;
   dprintf("VRAM: %p\tRegs: %p\nSlot: %X\n", locals->vram,
           locals->qfb, locals->slot);
-  if(locals->qfb->version != 'qfb0') {
+  if(locals->qfb->version != 'qfb1') {
     DebugStr("\pWrong QFB version");
     DisposeHandle(local_handle);
     return openErr;
@@ -74,7 +74,7 @@ int qfb_drvr_open(ParmBlkPtr params, DCtlPtr dce, uint32_t slot) {
     locals->qfb->depth = 32;
     break;
   }
-  locals->qfb->page = 0;
+  locals->qfb->base = QFB_VRAM_SLOT_BASE;
   dprintf("Splatting gray pattern.\n");
   qfb_gray_pixels(locals, 0);
   locals.unlock();
@@ -108,36 +108,20 @@ int qfb_drvr_close(ParmBlkPtr params, DCtlPtr dce) {
 void _putchar(char c) {
   uint32_t ch = static_cast<uint32_t>(static_cast<unsigned char>(c));
   if(ch > 0 && ch <= 255) {
-    *reinterpret_cast<volatile uint32_t*>(0xFCC0003C) = ch;
+    *reinterpret_cast<volatile uint32_t*>(0xFC00003C) = ch;
   }
 }
 
 uint32_t qfb_calculate_stride(uint32_t width, uint32_t depth) {
   /* this must mirror the calculation in mac_qfb.c */
-  uint32_t pot;
-  for(pot = 64; pot < width; pot = pot << 1) {}
-  switch (depth) {
-  default:
-  case 1:
-    return pot / 8;
-  case 2:
-    return pot / 4;
-  case 4:
-    return pot / 2;
-  case 8:
-    return pot;
-  case 16:
-    return pot * 2;
-  case 24:
-  case 32:
-    return pot * 4;
-  }
+  if(depth == 24) depth = 32;
+  return ((width * depth + 31) / 8) & ~(uint32_t)3;
 }
 
 uint16_t qfb_calculate_num_pages(uint32_t width, uint32_t height, uint32_t depth) {
   uint32_t rowbytes = qfb_calculate_stride(width, depth);
   uint32_t modesize = rowbytes * height;
-  uint32_t num_pages = QFB_VRAM_SIZE / modesize;
+  uint32_t num_pages = (QFB_VRAM_SIZE - QFB_VRAM_SLOT_BASE) / modesize;
   if(num_pages > 32000) return 32000;
   else return num_pages;
 }

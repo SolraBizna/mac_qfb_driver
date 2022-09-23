@@ -22,7 +22,7 @@ void qfb_gray_pixels(HLocker<Locals>& locals, uint32_t page) {
   case 24:
   case 32: a = 0xFFFFFFFF; b = 0x00000000; break;
   }
-  uint32_t* row_pointer = reinterpret_cast<uint32_t*>(locals->vram);
+  uint32_t* row_pointer = reinterpret_cast<uint32_t*>(locals->vram + QFB_VRAM_SLOT_BASE);
   row_pointer += page * qfb->height * (qfb->rowbytes / 4);
   for(uint32_t y = 0; y < qfb->height; ++y) {
     uint32_t rowbytes_left = qfb->rowbytes;
@@ -90,7 +90,7 @@ int qfb_common_set_entries(CntrlParam* params, HLocker<Locals>& locals) {
   return noErr;
 }
 
-/* Reset to default state. */
+/* Reset to default state. (Apparently only used by A/UX.) */
 int qfb_reset(CntrlParam* params, DCtlPtr dce) {
   HLocker<Locals> locals(dce->dCtlStorage);
   VDSwitchInfoRec* si
@@ -100,7 +100,10 @@ int qfb_reset(CntrlParam* params, DCtlPtr dce) {
   si->csMode = ONE_BIT_MODE;
   si->csData = 0;
   si->csPage = 0;
-  si->csBaseAddr = reinterpret_cast<Ptr>(locals->vram);
+  si->csBaseAddr = reinterpret_cast<Ptr>(locals->vram) + QFB_VRAM_SLOT_BASE;
+  locals->qfb->width = locals->qfb->user_width;
+  locals->qfb->height = locals->qfb->user_height;
+  locals->qfb->depth = 1;
   qfb_gray_pixels(locals, 0);
   return noErr;
 }
@@ -116,33 +119,39 @@ int qfb_set_mode(CntrlParam* params, DCtlPtr dce) {
   HLocker<Locals> locals(dce->dCtlStorage);
   VDSwitchInfoRec* si
     = *reinterpret_cast<VDSwitchInfoRec**>(params->csParam);
+  dprintf("\x1B[1mSET MODE: %i @ %i\x1B[0m\n", si->csMode,
+          si->csPage);
   if(si->csMode < FIRST_VALID_MODE
      || si->csMode > LAST_VALID_MODE) {
     DebugStr("\pset_mode bad mode");
+    dprintf("(bad mode)\n");
     return controlErr; /* bad target mode */
   }
-  dprintf("\x1B[1mSET MODE: %i @ %i\x1B[0m\n", si->csMode,
-          si->csPage);
+  int target_depth;
+  switch(si->csMode) {
+  case ONE_BIT_MODE: target_depth = 1; break;
+  case TWO_BIT_MODE: target_depth = 2; break;
+  case FOUR_BIT_MODE: target_depth = 4; break;
+  case EIGHT_BIT_MODE: target_depth = 8; break;
+  case SIXTEEN_BIT_MODE: target_depth = 16; break;
+  case THIRTY_TWO_BIT_MODE: target_depth = 24; break;
+  /* other cases ruled out above */
+  }
+  if(si->csPage >= qfb_calculate_num_pages(locals->qfb->width, locals->qfb->height, target_depth)) {
+    dprintf("(bad page)\n");
+    return controlErr;
+  }
   if(si->csMode != locals->cur_mode) {
     /* Actually change the mode */
     qfb_gray_clut(locals);
-    switch(si->csMode) {
-    case ONE_BIT_MODE: locals->qfb->depth = 1; break;
-    case TWO_BIT_MODE: locals->qfb->depth = 2; break;
-    case FOUR_BIT_MODE: locals->qfb->depth = 4; break;
-    case EIGHT_BIT_MODE: locals->qfb->depth = 8; break;
-    case SIXTEEN_BIT_MODE: locals->qfb->depth = 16; break;
-    case THIRTY_TWO_BIT_MODE: locals->qfb->depth = 24; break;
-    }
+    locals->qfb->depth = target_depth;
     locals->cur_mode = si->csMode;
     /* (QuickDraw will make other calls as needed to create the trademark gray
        pattern and set a valid CLUT) */
   }
-  if(si->csPage >= locals->qfb->num_pages) {
-    return controlErr;
-  }
-  locals->qfb->page = 0;
-  si->csBaseAddr = reinterpret_cast<Ptr>(locals->vram + (locals->qfb->height * locals->qfb->rowbytes) * si->csPage);
+  uint32_t page_offset = QFB_VRAM_SLOT_BASE + (locals->qfb->height * locals->qfb->rowbytes) * si->csPage;
+  locals->qfb->base = page_offset;
+  si->csBaseAddr = reinterpret_cast<Ptr>(locals->vram + page_offset);
   return noErr;
 }
 

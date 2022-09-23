@@ -4,7 +4,7 @@ This is the declaration ROM and driver for a nonexistent video card. If you are 
 
 Why?
 
-- Any arbitrary resolution up to 2048x1536!
+- Any arbitrary resolution up to 3840x2160!
 - Any QuickDraw-supported color depth, including Thousands! (missing from the native "macfb" framebuffer)
 - Very slightly improved performance!
 - Gamma correction! (adding a very slight performance hit that probably balances out the above)

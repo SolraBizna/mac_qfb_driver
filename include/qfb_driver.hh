@@ -12,10 +12,12 @@
 struct QFB {
   /* Reading this returns 'qfb0', writing it resets the device. */
   uint32_t version;
-  /* Current width, height, depth, and page */
-  uint32_t width, height, depth, page;
-  /* Rowbytes and page count for the current mode (R/O) */
-  uint32_t rowbytes, num_pages;
+  /* Current width, height, depth, and base */
+  uint32_t width, height, depth, base;
+  /* Rowbytes for the current mode (R/O) */
+  uint32_t rowbytes;
+  /* Unused register, reserved */
+  uint32_t reserved;
   /* Palette index and RW port */
   uint32_t pal_index, pal_color;
   /* Gamma LUT index and RW port */
@@ -100,6 +102,8 @@ int qfb_set_default_mode(CntrlParam* params, DCtlPtr dce);
 #define FIRST_VALID_MODE ONE_BIT_MODE
 #define LAST_VALID_MODE THIRTY_TWO_BIT_MODE
 
-#define QFB_VRAM_SIZE 0xC00000 /* 12MiB */
+#define QFB_VRAM_SIZE 0x2000000 /* 32MiB */
+/* the lowest address of VRAM accessible in the regular slot space */
+#define QFB_VRAM_SLOT_BASE 0x10000
 
 #endif

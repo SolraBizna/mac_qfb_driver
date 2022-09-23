@@ -7,8 +7,8 @@ int qfb_get_mode(CntrlParam* params, DCtlPtr dce) {
     = *reinterpret_cast<VDSwitchInfoRec**>(params->csParam);
   si->csMode = locals->cur_mode;
   si->csData = 0; /* current mode ID or unused */
-  si->csPage = locals->qfb->page;
-  si->csBaseAddr = reinterpret_cast<Ptr>(locals->vram + (locals->qfb->page * locals->qfb->rowbytes * locals->qfb->height));
+  si->csPage = (locals->qfb->base - QFB_VRAM_SLOT_BASE) / (locals->qfb->width * locals->qfb->rowbytes);
+  si->csBaseAddr = reinterpret_cast<Ptr>(locals->vram + locals->qfb->base);
   return noErr;
 }
 
@@ -57,7 +57,7 @@ int qfb_get_page_count(CntrlParam* params, DCtlPtr dce) {
   HLocker<Locals> locals(dce->dCtlStorage);
   VDSwitchInfoRec* si
     = *reinterpret_cast<VDSwitchInfoRec**>(params->csParam);
-  si->csPage = locals->qfb->num_pages;
+  si->csPage = qfb_calculate_num_pages(locals->qfb->width, locals->qfb->height, locals->qfb->depth);
   return noErr;
 }
 
@@ -67,9 +67,9 @@ int qfb_get_page_base(CntrlParam* params, DCtlPtr dce) {
   VDSwitchInfoRec* si
     = *reinterpret_cast<VDSwitchInfoRec**>(params->csParam);
   uint32_t target_page = si->csPage;
-  if(target_page >= locals->qfb->num_pages)
+  if(target_page >= qfb_calculate_num_pages(locals->qfb->width, locals->qfb->height, locals->qfb->depth))
     return statusErr;
-  si->csBaseAddr = reinterpret_cast<Ptr>(locals->vram + target_page * locals->qfb->rowbytes * locals->qfb->height);
+  si->csBaseAddr = reinterpret_cast<Ptr>(locals->vram + QFB_VRAM_SLOT_BASE + target_page * locals->qfb->rowbytes * locals->qfb->height);
   return noErr;
 }
 
@@ -215,7 +215,7 @@ int qfb_get_video_parameters(CntrlParam* params, DCtlPtr dce) {
   uint32_t width = vpi->csDisplayModeID == 0 ? locals->qfb->width : locals->qfb->user_width;
   uint32_t height = vpi->csDisplayModeID == 0 ? locals->qfb->height : locals->qfb->user_height;
   VPBlock* vpb = vpi->csVPBlockPtr;
-  vpb->vpBaseOffset = 0;
+  vpb->vpBaseOffset = QFB_VRAM_SLOT_BASE;
   vpb->vpBounds.top = 0;
   vpb->vpBounds.left = 0;
   vpb->vpBounds.bottom = height;

@@ -70,6 +70,8 @@ _sRsrc_Video:
         DatLstEntry sRsrcHWDevId, 1
         OSLstEntry minorBase, _MinorBaseRec
         OSLstEntry minorLength, _MinorLengthRec
+        OSLstEntry majorBase, _MajorBaseRec
+        OSLstEntry majorLength, _MajorLengthRec
         OSLstEntry sGammaDir, _GammaDirectory
         /* Now we need sResource records for every bit depth */
         OSLstEntry oneBitMode, _OneBitRec
@@ -93,9 +95,16 @@ _VideoName:
         .asciz "Display_Video_Apple_QFB"
 
 _MinorBaseRec:
-        .long 0 /* offset of video RAM within our minor space */
+        .long 0 /* offset of video device within our slot space */
 _MinorLengthRec:
-        .long 0xC0000000 /* size of our video RAM */
+        .long 0x10000000 /* size of our video device */
+        /* it's a slight fib, since the declaration ROM is at the end of that,
+           but the Slot Manager won't care :) */
+
+_MajorBaseRec:
+        .long 0 /* offset of video RAM within our super slot space */
+_MajorLengthRec:
+        .long 32 << 20 /* size of our video RAM, 32MiB */
 
 _VideoDriverDirectory:
         OSLstEntry sCPU_68020, _DRVRBlock
@@ -119,7 +128,7 @@ _GammaDirectory:
         .macro ModeParams type, bpp, cpp, bpc, name
 \name\():
         .long \name\()End-\name\() /* size of block */
-        .long 0 /* offset within VRAM */
+        .long 0x10000 /* offset within device memory */
         .short 0x4545 /* bytes per row, will be patched by QEMU */
         /* bounds (top, left, bottom, right) */
         .short 0
