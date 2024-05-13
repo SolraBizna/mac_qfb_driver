@@ -10,7 +10,7 @@
 #include "HLocker.hh"
 
 struct QFB {
-  /* Reading this returns 'qfb0', writing it resets the device. */
+  /* Reading this returns 'qfb1', writing it resets the device. */
   uint32_t version;
   /* Current width, height, depth, and base */
   uint32_t width, height, depth, base;
