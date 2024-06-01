@@ -270,6 +270,8 @@ extern char _GammaTableLinear_Name[32];
 extern char _GammaTableNTSC_Name[32];
 extern char _GammaTableSGI_Name[32];
 extern char _GammaTablePAL_Name[32];
+extern char _GammaTablePlato_Name[32];
+extern char _GammaTableOtalp_Name[32];
 
 int qfb_get_gamma_info_list(CntrlParam* params, DCtlPtr dce) {
   HLocker<Locals> locals(dce->dCtlStorage);
@@ -281,12 +283,12 @@ int qfb_get_gamma_info_list(CntrlParam* params, DCtlPtr dce) {
   case 0xFFFFFFFE: /* get the first table */
     ggl->csGammaTableID = 128;
     break;
-  case 132:
+  case 134:
     ggl->csGammaTableID = 0xFFFFFFFD; /* no more tables */
     return noErr;
   default:
     if(ggl->csPreviousGammaTableID < 128) return paramErr;
-    if(ggl->csPreviousGammaTableID > 132) return paramErr;
+    if(ggl->csPreviousGammaTableID > 134) return paramErr;
     ggl->csGammaTableID = ggl->csPreviousGammaTableID + 1;
     break;
   }
@@ -306,10 +308,16 @@ int qfb_get_gamma_info_list(CntrlParam* params, DCtlPtr dce) {
   case 132:
     mystrcpy(ggl->csGammaTableName, _GammaTablePAL_Name);
     break;
+  case 133:
+    mystrcpy(ggl->csGammaTableName, _GammaTablePlato_Name);
+    break;
+  case 134:
+    mystrcpy(ggl->csGammaTableName, _GammaTableOtalp_Name);
+    break;
   default:
     return paramErr;
   }
-  ggl->csGammaTableSize = 12 + 256;
+  ggl->csGammaTableSize = 12 + (ggl->csGammaTableID > 132 ? 768 : 256);
   return noErr;
 }
 
@@ -318,6 +326,8 @@ extern GammaTbl _GammaTableLinear;
 extern GammaTbl _GammaTableNTSC;
 extern GammaTbl _GammaTableSGI;
 extern GammaTbl _GammaTablePAL;
+extern GammaTbl _GammaTablePlato;
+extern GammaTbl _GammaTableOtalp;
 
 int qfb_retrieve_gamma_table(CntrlParam* params, DCtlPtr dce) {
   HLocker<Locals> locals(dce->dCtlStorage);
@@ -338,6 +348,12 @@ int qfb_retrieve_gamma_table(CntrlParam* params, DCtlPtr dce) {
     break;
   case 132:
     mymemcpy(rg->csGammaTablePtr, &_GammaTablePAL, 12 + 256);
+    break;
+  case 133:
+    mymemcpy(rg->csGammaTablePtr, &_GammaTablePlato, 12 + 768);
+    break;
+  case 134:
+    mymemcpy(rg->csGammaTablePtr, &_GammaTableOtalp, 12 + 768);
     break;
   default:
     return paramErr;

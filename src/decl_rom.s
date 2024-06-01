@@ -5,6 +5,8 @@
         .global _GammaTableNTSC, _GammaTableNTSC_Name
         .global _GammaTableSGI, _GammaTableSGI_Name
         .global _GammaTablePAL, _GammaTablePAL_Name
+        .global _GammaTablePlato, _GammaTablePlato_Name
+        .global _GammaTableOtalp, _GammaTableOtalp_Name
 
         .include "src/defs.s"
 
