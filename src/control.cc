@@ -315,6 +315,9 @@ int qfb_drvr_control(ParmBlkPtr params, DCtlPtr dce) {
   dprintf("control %s (%i)\n",
           get_control_name(params->cntrlParam.csCode),
           params->cntrlParam.csCode);
+  dce = (DCtlPtr)StripAddress((Ptr)dce);
+  Byte mode = 1;
+  SwapMMUMode(&mode);
   int ret = controlErr;
   switch(params->cntrlParam.csCode) {
   case 0: ret = qfb_reset(&params->cntrlParam, dce); break;
@@ -330,5 +333,6 @@ int qfb_drvr_control(ParmBlkPtr params, DCtlPtr dce) {
   case 9: ret = qfb_set_default_mode(&params->cntrlParam, dce); break;
   }
   dprintf("\t= %i\n", ret);
+  SwapMMUMode(&mode);
   return ret;
 }

@@ -299,9 +299,18 @@ _goIODone:
         RTS
         MacsbugSymbol "_goIODone"
 qfb_interrupt_service_routine:
+        /* set addressing mode to 32bit for superslot access */
+        MOVE.L #1, %D0
+        .short 0xA05D
+        MOVEM.L %D0, -(%SP)
+        /* end of addressing mode change */
         /* acknowledge the interrupt */
         MOVEQ.L #1, %D0
         MOVE.L %D0, 0x30(%A1)
+        /* restore addressing mode */
+        MOVEM.L (%SP)+, %D0
+        .short 0xA05D
+        /* end of restore addressing mode */
         /* convert register pointer to slot number */
         MOVE.L %A1, %D0
         ROL.L #8, %D0
