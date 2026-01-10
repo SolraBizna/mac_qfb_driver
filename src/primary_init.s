@@ -22,6 +22,12 @@
         /* (we should use the SResources to determine this, but it's really
            inconvenient to do that in a primary init) */
         CLR.L %D0
+        /* set addressing mode to 32bit for superslot access */
+        MOVE.B #1, %D0
+        .short 0xA05D
+        MOVEM.L %D0, -(%SP)
+        CLR.L %D0
+        /* end of addressing mode change */
         MOVE.B seSlot(%A0), %D0
         ORI.L #0xF0, %D0
         MOVEQ.L #24, %D1
@@ -75,6 +81,10 @@ _screenFillLoopInner:
         NOT.L %D2
         SUBQ.L #1, %D1
         BGT _screenFillLoopOuter
+        /* restore addressing mode */
+        MOVEM.L (%SP)+, %D0
+        .short 0xA05D
+        /* end of restore addressing mode */
         /* now it gets real... now it's time to patch our sResources */
         /* ...or it would be if QEMU hadn't done it for us. */
         /* make room on the stack for the spBlock */

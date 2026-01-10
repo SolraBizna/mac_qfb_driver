@@ -13,8 +13,8 @@ template<class T> class HLocker {
 public:
   HLocker(Handle locked) : inner(*reinterpret_cast<T**>(locked)) {}
   void unlock() {}
-  T* operator*() const { return inner; }
-  T* operator->() const { return inner; }
+  T* operator*() const { return (T*)StripAddress((Ptr)inner); }
+  T* operator->() const { return (T*)StripAddress((Ptr)inner); }
 };
 
 #else

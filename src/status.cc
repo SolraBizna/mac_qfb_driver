@@ -403,6 +403,9 @@ int qfb_drvr_status(ParmBlkPtr params, DCtlPtr dce) {
   dprintf("\t\t\t\t\tstatus %s (%i)\n",
           get_status_name(params->cntrlParam.csCode),
           params->cntrlParam.csCode);
+  dce = (DCtlPtr)StripAddress((Ptr)dce);
+  Byte mode = 1;
+  SwapMMUMode(&mode);
   int ret = statusErr;
   switch(params->cntrlParam.csCode) {
   case 10: // PCI flavor!
@@ -424,6 +427,7 @@ int qfb_drvr_status(ParmBlkPtr params, DCtlPtr dce) {
   case 21: ret = qfb_retrieve_gamma_table(&params->cntrlParam, dce); break;
   }
   dprintf("\t\t\t\t\t\t= %i\n", ret);
+  SwapMMUMode(&mode);
   return ret;
 }
 

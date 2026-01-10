@@ -1,13 +1,27 @@
 #include "qfb_driver.hh"
 
+pascal void SwapMMUMode(Byte *bp){
+    register Byte _bp __asm__("%d0");_bp = *bp;
+    __asm__ volatile(".short 0xA05D"
+        : "=r"(_bp)
+        : "r"(_bp)                                                                      : "%d1", "%d2", "%a0", "%a1");
+*bp = _bp;
+}
+
 int qfb_drvr_open(ParmBlkPtr params, DCtlPtr dce, uint32_t slot) {
   (void)params;
+  dce = (DCtlPtr)StripAddress((Ptr)dce);
+  Byte mode = 1;
+  SwapMMUMode(&mode);
   dprintf("--- mac_qfb_driver opened! ---\n");
   dprintf("Allocating memory.\n");
   /* Allocate memory for our Locals */
   ReserveMemSys(sizeof(Locals)+sizeof(SlotIntQElement));
   Handle local_handle = NewHandleSysClear(sizeof(Locals));
-  if(!local_handle) return MemError();
+  if(!local_handle) {
+    SwapMMUMode(&mode);
+    return MemError();
+  }
 #ifdef SUPPORT_AUX
   dprintf("Locking handle.\n");
   HLock(local_handle);
@@ -24,7 +38,9 @@ int qfb_drvr_open(ParmBlkPtr params, DCtlPtr dce, uint32_t slot) {
           locals->qfb, locals->slot);
   if(locals->qfb->version != 'qfb1') {
     DebugStr("\pWrong QFB version");
+    locals.unlock();
     DisposeHandle(local_handle);
+    SwapMMUMode(&mode);
     return openErr;
   }
   dprintf("Allocating Slot Interrupt Queue element.\n");
@@ -33,6 +49,7 @@ int qfb_drvr_open(ParmBlkPtr params, DCtlPtr dce, uint32_t slot) {
     int ret = MemError();
     locals.unlock();
     DisposeHandle(local_handle);
+    SwapMMUMode(&mode);
     return ret;
   }
   dprintf("Initializing Slot Interrupt Queue element.\n");
@@ -80,12 +97,16 @@ int qfb_drvr_open(ParmBlkPtr params, DCtlPtr dce, uint32_t slot) {
   locals.unlock();
   auto ret = qfb_enable_interrupts(dce);
   dprintf("Open complete!\n");
+  SwapMMUMode(&mode);
   return ret;
 }
 
 int qfb_drvr_close(ParmBlkPtr params, DCtlPtr dce) {
   (void)params;
   dprintf("Driver closing.\n");
+  Byte mode = 1;
+  SwapMMUMode(&mode);
+  dce = (DCtlPtr)StripAddress((Ptr)dce);
   if(dce->dCtlStorage) {
     HLocker<Locals> locals(dce->dCtlStorage);
     if(locals->slot_queue_element) {
@@ -102,13 +123,17 @@ int qfb_drvr_close(ParmBlkPtr params, DCtlPtr dce) {
     DisposeHandle(dce->dCtlStorage);
     dce->dCtlStorage = nullptr;
   }
+  SwapMMUMode(&mode);
   return noErr;
 }
 
 void _putchar(char c) {
   uint32_t ch = static_cast<uint32_t>(static_cast<unsigned char>(c));
   if(ch > 0 && ch <= 255) {
+    Byte mode = 1;
+    SwapMMUMode(&mode);
     *reinterpret_cast<volatile uint32_t*>(0xFC00003C) = ch;
+    SwapMMUMode(&mode);
   }
 }
 
@@ -129,26 +154,32 @@ uint16_t qfb_calculate_num_pages(uint32_t width, uint32_t height, uint32_t depth
 int qfb_enable_interrupts(DCtlPtr dce) {
   dprintf("Enabling vertical blank interrupt.\n");
   HLocker<Locals> locals(dce->dCtlStorage);
+  Byte mode = 1;
   if(locals->irq_enabled) {
     dprintf("(but it was already enabled!)\n");
     return noErr; /* nothing to do */
   }
+  SwapMMUMode(&mode);
   SIntInstall(locals->slot_queue_element, locals->slot);
   locals->qfb->irq_mask = QFB_IRQ_VBL;
   locals->irq_enabled = true;
+  SwapMMUMode(&mode);
   return noErr;
 }
 
 int qfb_disable_interrupts(DCtlPtr dce) {
   dprintf("Disabling vertical blank interrupt.\n");
   HLocker<Locals> locals(dce->dCtlStorage);
+  Byte mode = 1;
   if(!locals->irq_enabled) {
     dprintf("(but it was already disabled!)\n");
     return noErr; /* nothing to do */
   }
+  SwapMMUMode(&mode);
   locals->irq_enabled = false;
   locals->qfb->irq_mask = 0;
   SIntRemove(locals->slot_queue_element, locals->slot);
+  SwapMMUMode(&mode);
   return noErr;
 }
 
