@@ -65,12 +65,13 @@ int qfb_common_set_entries(CntrlParam* params, HLocker<Locals>& locals) {
   VDSetEntryRecord* si
     = *reinterpret_cast<VDSetEntryRecord**>(params->csParam);
   volatile QFB* qfb = locals->qfb;
+  ColorSpec *table = (ColorSpec *)StripAddress((Ptr)(si->csTable));
   bool gray_mode = locals->gray_mode_enabled;
   /* note: si->csCount is "zero-based", so <= is correct below */
   if(si->csStart < 0) {
     /* Set entries by their index fields. */
     for(int32_t array_index = 0; array_index <= si->csCount; ++array_index) {
-      ColorSpec* entry = si->csTable + array_index;
+      ColorSpec* entry = table + array_index;
       if(entry->value >= 256 || entry->value < 0)
         continue;
       qfb->pal_index = entry->value;
@@ -82,7 +83,7 @@ int qfb_common_set_entries(CntrlParam* params, HLocker<Locals>& locals) {
     for(int32_t array_index = 0, entry_index = si->csStart;
         array_index <= si->csCount && entry_index < 256;
         ++array_index, ++entry_index) {
-      ColorSpec* entry = si->csTable + array_index;
+      ColorSpec* entry = table + array_index;
       qfb->pal_index = entry_index;
       set_entry(qfb, entry, gray_mode);
     }
